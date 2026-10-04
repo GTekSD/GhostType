@@ -1,7 +1,7 @@
 # GhostType - GTekSD
 
 <p align="center">
-  <img src="assets/ghosttype-logo.jpg" alt="GhostType logo" width="240">
+  <img src="assets/ghosttype-logo.jpg" alt="GhostType logo">
 </p>
 
 GhostType is a browser extension for automated text entry and DOM event simulation in supported browser form fields. It lets you prepare multiple text snippets and types a selected snippet into the active editable field.
