@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GhostType - GTekSD</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="main-content">
+    <div class="input-fields-header">
+      <span>Text fields</span>
+    </div>
+    <div class="input-toolbar">
+      <label class="typing-speed-compact" for="typingSpeed">
+        <span>Speed</span>
+        <input type="range" id="typingSpeed" min="30" max="150" value="60" aria-label="Typing speed">
+      </label>
+      <label class="human-mode-compact" for="humanModeToggle" title="Random pauses and typos when typing">
+        <span>Human</span>
+        <span class="toggle-switch">
+          <input type="checkbox" id="humanModeToggle" checked>
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
+      <div class="input-field-actions">
+        <button type="button" id="removeInputBtn" class="add-input-btn remove-input-btn" title="Remove the last added text field" aria-label="Remove the last added text field" disabled>−</button>
+        <button type="button" id="addInputBtn" class="add-input-btn" title="Add another text field" aria-label="Add another text field">+</button>
+      </div>
+    </div>
+    <div id="inputFields" class="input-fields"></div>
+
+    <template id="inputCardTemplate">
+      <section class="input-card">
+        <div class="input-card-toolbar">
+          <button type="button" class="primary-btn" data-action="start">▶ Start</button>
+          <button type="button" class="secondary-btn stop-btn" data-action="stop" disabled>⏹ Stop</button>
+          <button type="button" class="paste-btn" data-action="paste" title="Paste from clipboard">📋 Paste</button>
+          <button type="button" class="clear-btn" data-action="clear" title="Clear text">🗑️ Clear</button>
+        </div>
+        <div class="text-input-container">
+          <textarea class="typing-input" placeholder="Enter or paste text to type..."></textarea>
+          <div class="character-count">0 chars</div>
+        </div>
+        <div class="progress-container">
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+        </div>
+      </section>
+    </template>
+
+    <div class="developer-credit">Developed by Сухас Дхолз // GTekSD</div>
+
+  </div>
+
+  <script defer src="sidepanel.js"></script>
+</body>
+</html>

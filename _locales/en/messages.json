@@ -1,0 +1,11 @@
+{
+   "appName": {
+      "message": "GhostType - GTekSD"
+   },
+   "shortDesc": {
+      "message": "Automated typing and DOM keystroke simulator for security testing and bypassing restricted paste fields across modern browsers."
+   },
+   "storeDesc": {
+      "message": "GhostType - GTekSD automates text entry in supported browser form fields using synthetic DOM events. Save multiple snippets, adjust typing speed, and optionally simulate pauses and corrections. Websites can reject synthetic input; this extension does not bypass paste restrictions or site security controls. Compatibility varies by browser, website, and editor."
+   }
+}

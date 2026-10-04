@@ -1,0 +1,41 @@
+{
+   "action": {
+      "default_icon": {
+         "512": "icons/icon512.png",
+         "128": "icons/icon128.png",
+         "16": "icons/icon16.png",
+         "32": "icons/icon32.png",
+         "48": "icons/icon48.png",
+         "64": "icons/icon64.png"
+      }
+   },
+   "background": {
+      "service_worker": "background.js",
+      "type": "module"
+   },
+   "content_scripts": [ {
+      "js": [ "content.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_idle"
+   } ],
+   "default_locale": "en",
+   "description": "__MSG_shortDesc__",
+   "homepage_url": "https://github.com/GTekSD/GhostType",
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "512": "icons/icon512.png",
+      "128": "icons/icon128.png",
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4i9BYeRnDtN7+R8sM/+VhX6UUA6XNowhjaB7BpdsAle3ZqW8lquw5pckl299jguoqyoQ4ApZcK48I9+EIMaBphdper0A2KOskacIt4iEfewmgL/8lvh+vyoj5j0b6GrOALys2IXmKeEa9nxSpQHxPvHRrS2DqylKFHiwx3f7hbmNV6j1GG+IP69oA2KfUabzySr6YwK9VAlytZenkMB18omSowruVDcT5PMs8u0kkpgV0UtBgivT4gYmSc7h4V4mZdZ/eXEO36CuxLc2DBZai/C/4Bl6MUkoUiqemgrKrVZX5DR3ZflL6S/LJHYS1G/SbYQcwWNhOvaJQU6ctDmIwQIDAQAB",
+   "manifest_version": 3,
+   "name": "GhostType - GTekSD",
+   "permissions": [ "activeTab", "scripting", "sidePanel", "tabs", "clipboardRead", "contextMenus" ],
+   "side_panel": {
+      "default_path": "sidepanel.html"
+   },
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.69"
+}
