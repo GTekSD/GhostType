@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "GhostType - GTekSD",
+  "version": "1.69",
+  "description": "__MSG_shortDesc__",
+  "default_locale": "en",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "ghosttype@gteksd.github.io",
+      "strict_min_version": "128.0"
+    }
+  },
+  "action": {
+    "default_title": "Open GhostType",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "sidebar_action": {
+    "default_title": "GhostType - GTekSD",
+    "default_panel": "sidepanel.html",
+    "default_icon": "icons/icon48.png",
+    "open_at_install": false
+  },
+  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "clipboardRead",
+    "contextMenus"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png",
+    "512": "icons/icon512.png"
+  }
+}

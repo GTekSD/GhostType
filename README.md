@@ -22,7 +22,11 @@ GhostType is a browser extension for automated text entry and DOM event simulati
 4. Select **Load unpacked** and choose the project folder containing `manifest.json`.
 5. Open the GhostType side panel, enter text, focus an editable field on a page, and select **Start**.
 
-The manifest uses Chromium extension APIs, including the side-panel API. Compatibility depends on browser support and individual websites and editors.
+## Firefox build
+
+Firefox uses a separate manifest and background script with its native sidebar. Build its AMO upload package by running `.\firefox\build.ps1` in PowerShell. To test it locally, extract the generated ZIP, open `about:debugging`, select **This Firefox** → **Load Temporary Add-on**, and choose the extracted `manifest.json`.
+
+The root package targets Chromium browsers such as Chrome and Edge; the Firefox package uses Firefox-specific extension APIs. Compatibility with individual websites and editors varies.
 
 ## Important limitations
 
