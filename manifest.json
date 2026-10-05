@@ -20,7 +20,7 @@
    } ],
    "default_locale": "en",
    "description": "__MSG_shortDesc__",
-   "homepage_url": "https://github.com/GTekSD/GhostType",
+   "homepage_url": "https://github.com/GTekSD",
    "host_permissions": [ "\u003Call_urls>" ],
    "icons": {
       "512": "icons/icon512.png",
