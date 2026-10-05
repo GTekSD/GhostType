@@ -59,6 +59,7 @@ try {
       $manifest.version -ne '1.69' -or
       $manifest.side_panel -or
       $manifest.permissions -contains 'sidePanel' -or
+      $manifest.browser_specific_settings.gecko.data_collection_permissions.required -notcontains 'none' -or
       -not $manifest.sidebar_action.default_panel
     ) {
       throw 'Firefox manifest validation failed.'
