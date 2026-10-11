@@ -1,10 +1,14 @@
-# GhostType - GTekSD
-
 <p align="center">
   <img src="assets/ghosttype-logo.jpg" alt="GhostType logo">
 </p>
 
+# GhostType - GTekSD
+
 GhostType is a browser extension for automated text entry into supported web-page editors. Prepare multiple text snippets, choose a typing speed, and send a snippet to a focused field or, where supported, a canvas-based input that handles keyboard events.
+
+## Demo video
+
+Watch the [GhostType - GTekSD demonstration on YouTube](https://youtu.be/gBf22zKv66A).
 
 ## Install GhostType
 
