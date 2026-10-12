@@ -10,7 +10,15 @@
 
   <div class="main-content">
     <div class="input-fields-header">
-      <span>Text fields</span>
+      <span>Text Snippets</span>
+      <button type="button" id="clearAllTextsBtn" class="clear-all-snippets-btn" title="Clear the contents of all text snippets" aria-label="Clear all text snippets" disabled>Clear all</button>
+      <label class="canvas-mode-control" for="canvasModeToggle" title="Send synthetic keyboard events to the last canvas you clicked on the webpage">
+        <span>Canvas mode</span>
+        <span class="toggle-switch">
+          <input type="checkbox" id="canvasModeToggle">
+          <span class="toggle-slider"></span>
+        </span>
+      </label>
     </div>
     <div class="input-toolbar">
       <label class="typing-speed-compact" for="typingSpeed">
