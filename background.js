@@ -71,6 +71,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           speed: message.speed,
           errorRate: message.errorRate,
           humanMode: message.humanMode,
+          canvasMode: message.canvasMode,
           position: message.position
         }
       : { action: message.action };
