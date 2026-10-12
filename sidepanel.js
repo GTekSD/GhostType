@@ -14,6 +14,7 @@ let settings = {
   userSetTheme: false,
   defaultSpeed: 60,
   humanMode: true,
+  canvasMode: false,
   enableBreaks: true,
   minBreakTime: 1,
   maxBreakTime: 5,
@@ -95,6 +96,7 @@ function loadSettings() {
   // Apply settings to UI
   document.getElementById('typingSpeed').value = settings.defaultSpeed;
   document.getElementById('humanModeToggle').checked = settings.humanMode !== false; // default true
+  document.getElementById('canvasModeToggle').checked = settings.canvasMode === true;
   updateSpeedDisplay();
 
   loadTextInputs();
@@ -147,6 +149,8 @@ function updateInputFieldActions() {
   const removeButton = document.getElementById('removeInputBtn');
   const inputCount = document.querySelectorAll('#inputFields .input-card').length;
   removeButton.disabled = isTyping || inputCount <= MIN_INPUT_COUNT;
+  const hasText = [...document.querySelectorAll('#inputFields .typing-input')].some((input) => input.value.length > 0);
+  document.getElementById('clearAllTextsBtn').disabled = isTyping || !hasText;
 }
 
 // Apply theme
@@ -172,6 +176,7 @@ function setupEventListeners() {
     if (!event.target.matches('.typing-input')) return;
     event.target.closest('.input-card').querySelector('.character-count').textContent = `${event.target.value.length} chars`;
     saveTextInputs();
+    updateInputFieldActions();
   });
   document.getElementById('inputFields').addEventListener('click', (event) => {
     const button = event.target.closest('[data-action]');
@@ -198,6 +203,7 @@ function setupEventListeners() {
     saveTextInputs();
     updateInputFieldActions();
   });
+  document.getElementById('clearAllTextsBtn').addEventListener('click', clearAllTextInputs);
 
   // Speed slider
   const speedSlider = document.getElementById('typingSpeed');
@@ -211,6 +217,12 @@ function setupEventListeners() {
   const humanModeToggle = document.getElementById('humanModeToggle');
   humanModeToggle.addEventListener('change', () => {
     settings.humanMode = humanModeToggle.checked;
+    saveSettings();
+  });
+
+  const canvasModeToggle = document.getElementById('canvasModeToggle');
+  canvasModeToggle.addEventListener('change', () => {
+    settings.canvasMode = canvasModeToggle.checked;
     saveSettings();
   });
 
@@ -308,18 +320,19 @@ function startTypingInternal(text, inputId) {
     speed: speed,
     errorRate: errorRate,
     humanMode: settings.humanMode,
+    canvasMode: settings.canvasMode,
     position: currentPosition
   }, (response) => {
     if (chrome.runtime.lastError) {
       console.error('Failed to start typing:', chrome.runtime.lastError);
-      showToast('Error: ' + chrome.runtime.lastError.message);
+      showToast('Error: ' + chrome.runtime.lastError.message, 'error');
       stopTyping(inputId);
     } else if (response && response.status === 'error') {
       console.error('Typing error:', response.error);
-      showToast(response.error || 'Failed to start typing');
+      showToast(response.error || 'Failed to start typing', 'error');
       stopTyping(inputId);
     } else if (response && response.status === 'no_tab') {
-      showToast('No active tab found. Please open a page first.');
+      showToast('No active tab found. Please open a page first.', 'warning');
       stopTyping(inputId);
     } else {
       console.log('Typing started successfully:', response);
@@ -377,7 +390,7 @@ async function pasteFromClipboard(card) {
     const text = await navigator.clipboard.readText();
     
     if (!text) {
-      showToast('Clipboard is empty');
+      showToast('Clipboard is empty', 'warning');
       return;
     }
     
@@ -386,10 +399,11 @@ async function pasteFromClipboard(card) {
     input.value = text;
     card.querySelector('.character-count').textContent = `${text.length} chars`;
     saveTextInputs();
+    updateInputFieldActions();
 
   } catch (err) {
     console.error('Failed to read clipboard:', err);
-    showToast('Failed to paste: ' + err.message);
+    showToast('Failed to paste: ' + err.message, 'error');
   }
 }
 
@@ -398,51 +412,38 @@ function clearText(card) {
   input.value = '';
   card.querySelector('.character-count').textContent = '0 chars';
   saveTextInputs();
+  updateInputFieldActions();
 }
 
-function showToast(message, duration = 3000) {
+function clearAllTextInputs() {
+  if (isTyping) return;
+  document.querySelectorAll('#inputFields .input-card').forEach((card) => {
+    card.querySelector('.typing-input').value = '';
+    card.querySelector('.character-count').textContent = '0 chars';
+  });
+  saveTextInputs();
+  updateInputFieldActions();
+  showToast('All text snippets cleared', 'success');
+}
+
+function showToast(message, type = 'info', duration = 3000) {
   // Remove existing toast
   const existing = document.querySelector('.toast');
   if (existing) existing.remove();
 
   const toast = document.createElement('div');
   toast.className = 'toast';
+  toast.dataset.type = type;
+  toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+  toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
   toast.textContent = message;
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #ff6b6b;
-    color: white;
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    z-index: 10000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    animation: fadeIn 0.3s ease;
-  `;
+  toast.classList.add('toast-enter');
 
   document.body.appendChild(toast);
 
   setTimeout(() => {
-    toast.style.animation = 'fadeOut 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
+    toast.classList.remove('toast-enter');
+    toast.classList.add('toast-exit');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
   }, duration);
 }
-
-// Add CSS animations
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-  }
-  
-  @keyframes fadeOut {
-    from { opacity: 1; transform: translateX(-50%) translateY(0); }
-    to { opacity: 0; transform: translateX(-50%) translateY(20px); }
-  }
-`;
-document.head.appendChild(style);
