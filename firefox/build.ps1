@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$outputPath = Join-Path (Split-Path $projectRoot -Parent) 'GhostType-GTekSD-v1.69-Firefox.zip'
+$outputPath = Join-Path (Split-Path $projectRoot -Parent) 'GhostType-GTekSD-v2.69-Firefox.zip'
 $stagingPath = Join-Path $env:TEMP ('GhostType-Firefox-' + [guid]::NewGuid().ToString('N'))
 
 New-Item -ItemType Directory -Path $stagingPath | Out-Null
@@ -14,7 +14,7 @@ try {
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'manifest.json') -Destination (Join-Path $stagingPath 'manifest.json')
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'background.js') -Destination (Join-Path $stagingPath 'background.js')
 
-  foreach ($folder in @('_locales', 'icons')) {
+  foreach ($folder in @('_locales', 'icons', 'fonts')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $folder) -Destination (Join-Path $stagingPath $folder) -Recurse
   }
 
@@ -32,7 +32,8 @@ try {
       'sidepanel.js',
       'styles.css',
       '_locales',
-      'icons'
+      'icons',
+      'fonts'
     ) -DestinationPath $outputPath -CompressionLevel Optimal
   } finally {
     Pop-Location
@@ -41,7 +42,7 @@ try {
   $archive = [System.IO.Compression.ZipFile]::OpenRead($outputPath)
   try {
     $entryNames = @($archive.Entries | ForEach-Object FullName)
-    foreach ($requiredEntry in @('manifest.json', 'background.js', '_locales/en/messages.json', 'icons/icon128.png')) {
+    foreach ($requiredEntry in @('manifest.json', 'background.js', '_locales/en/messages.json', 'icons/icon128.png', 'fonts/inter-latin.woff2', 'fonts/jetbrains-mono-latin.woff2', 'fonts/OFL-Inter.txt', 'fonts/OFL-JetBrains-Mono.txt')) {
       if ($entryNames -notcontains $requiredEntry) {
         throw "Firefox archive is missing required entry: $requiredEntry"
       }
@@ -56,7 +57,7 @@ try {
     }
 
     if (
-      $manifest.version -ne '1.69' -or
+      $manifest.version -ne '2.69' -or
       $manifest.side_panel -or
       $manifest.permissions -contains 'sidePanel' -or
       $manifest.browser_specific_settings.gecko.data_collection_permissions.required -notcontains 'none' -or
