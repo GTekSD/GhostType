@@ -5,6 +5,15 @@
     return;
   }
   window.GhostTypeInitialized = true;
+
+  let lastClickedCanvas = null;
+
+  document.addEventListener('pointerdown', (event) => {
+    const clickedCanvas = event.composedPath().find((target) =>
+      target?.tagName === 'CANVAS'
+    );
+    lastClickedCanvas = clickedCanvas || null;
+  }, true);
   
   // Helper functions from original
   const getRandomChar = () => {
@@ -44,7 +53,7 @@
   let currentText = "";
   let typingTimeout = null;
   // Main typing function with ORIGINAL logic
-  function startTyping(text, speed = 60, errorRate = 0.05, startPosition = 0, humanMode = true) {
+  function startTyping(text, speed = 60, errorRate = 0.05, startPosition = 0, humanMode = true, canvasMode = false) {
     // Detect Google Docs
     const googleDocsIframe = document.querySelector(".docs-texteventtarget-iframe");
     const isGoogleDocs = !!googleDocsIframe;
@@ -64,6 +73,13 @@
         console.error(errorMsg);
         throw new Error(errorMsg);
       }
+    } else if (canvasMode) {
+      targetElement = lastClickedCanvas;
+      if (!targetElement?.isConnected) {
+        const errorMsg = "No canvas selected. Turn on Canvas mode, click the canvas on the webpage, then start typing.";
+        console.error(errorMsg);
+        throw new Error(errorMsg);
+      }
     } else {
       targetElement = document.activeElement;
       if (!targetElement || (!["INPUT", "TEXTAREA"].includes(targetElement.tagName) && !targetElement.isContentEditable)) {
@@ -78,6 +94,9 @@
       targetElement.focus();
     } catch (e) {
       console.error("Could not focus element:", e);
+    }
+    if (canvasMode) {
+      targetElement.dispatchEvent(new FocusEvent("focus"));
     }
 
     // Calculate typing delay (from original)
@@ -120,7 +139,20 @@
 
     // Type Enter (from original logic)
     const typeEnter = async () => {
-      if (isGoogleDocs) {
+      if (canvasMode) {
+        targetElement.dispatchEvent(new KeyboardEvent("keydown", {
+          key: "Enter", code: "Enter", keyCode: 13, which: 13,
+          bubbles: true, cancelable: true
+        }));
+        targetElement.dispatchEvent(new KeyboardEvent("keypress", {
+          key: "Enter", code: "Enter", keyCode: 13, which: 13,
+          bubbles: true, cancelable: true
+        }));
+        targetElement.dispatchEvent(new KeyboardEvent("keyup", {
+          key: "Enter", code: "Enter", keyCode: 13, which: 13,
+          bubbles: true, cancelable: true
+        }));
+      } else if (isGoogleDocs) {
         targetElement.dispatchEvent(new KeyboardEvent("keydown", {
           key: "Enter", code: "Enter", keyCode: 13, which: 13, 
           bubbles: true, cancelable: true
@@ -157,7 +189,16 @@
       }
 
       if (char === "\b") {
-        if (isGoogleDocs) {
+        if (canvasMode) {
+          targetElement.dispatchEvent(new KeyboardEvent("keydown", {
+            key: "Backspace", code: "Backspace", keyCode: 8, which: 8,
+            bubbles: true, cancelable: true
+          }));
+          targetElement.dispatchEvent(new KeyboardEvent("keyup", {
+            key: "Backspace", code: "Backspace", keyCode: 8, which: 8,
+            bubbles: true, cancelable: true
+          }));
+        } else if (isGoogleDocs) {
           targetElement.dispatchEvent(new KeyboardEvent("keydown", {
             key: "Backspace", code: "Backspace", keyCode: 8, which: 8,
             bubbles: true, cancelable: true
@@ -187,7 +228,35 @@
       }
 
       // Regular character - ORIGINAL LOGIC for Google Docs
-      if (isGoogleDocs) {
+      if (canvasMode) {
+        const isShiftChar = char !== char.toLowerCase() || '!@#$%^&*()_+{}|:"<>?~'.includes(char);
+        const code = getKeyCode(char);
+        const charCode = char.charCodeAt(0);
+        if (isShiftChar) {
+          targetElement.dispatchEvent(new KeyboardEvent("keydown", {
+            key: "Shift", code: "ShiftLeft", keyCode: 16, which: 16,
+            shiftKey: true, bubbles: true, cancelable: true
+          }));
+        }
+        targetElement.dispatchEvent(new KeyboardEvent("keydown", {
+          key: char, code, keyCode: charCode, which: charCode,
+          shiftKey: isShiftChar, bubbles: true, cancelable: true
+        }));
+        targetElement.dispatchEvent(new KeyboardEvent("keypress", {
+          key: char, code, keyCode: charCode, which: charCode,
+          shiftKey: isShiftChar, bubbles: true, cancelable: true
+        }));
+        targetElement.dispatchEvent(new KeyboardEvent("keyup", {
+          key: char, code, keyCode: charCode, which: charCode,
+          shiftKey: isShiftChar, bubbles: true, cancelable: true
+        }));
+        if (isShiftChar) {
+          targetElement.dispatchEvent(new KeyboardEvent("keyup", {
+            key: "Shift", code: "ShiftLeft", keyCode: 16, which: 16,
+            bubbles: true, cancelable: true
+          }));
+        }
+      } else if (isGoogleDocs) {
         const isShiftChar = '!@#$%^&*()_+{}|:"<>?~'.includes(char);
         const code = getKeyCode(char);
         const charCode = char.charCodeAt(0);
@@ -278,7 +347,10 @@
     // Type character FAST (no delays, for fast mode)
     const typeCharFast = async (char) => {
       if (char === "\n") {
-        if (isGoogleDocs) {
+        if (canvasMode) {
+          targetElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+          targetElement.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+        } else if (isGoogleDocs) {
           targetElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
           await new Promise(r => setTimeout(r, 5));
           targetElement.dispatchEvent(new KeyboardEvent("keypress", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
@@ -297,7 +369,31 @@
       }
 
       // Regular character - simplified, minimal delays
-      if (isGoogleDocs) {
+      if (canvasMode) {
+        const isShiftChar = char !== char.toLowerCase() || '!@#$%^&*()_+{}|:"<>?~'.includes(char);
+        const code = getKeyCode(char);
+        const charCode = char.charCodeAt(0);
+        if (isShiftChar) {
+          targetElement.dispatchEvent(new KeyboardEvent("keydown", {
+            key: "Shift", code: "ShiftLeft", keyCode: 16, which: 16,
+            shiftKey: true, bubbles: true, cancelable: true
+          }));
+        }
+        targetElement.dispatchEvent(new KeyboardEvent("keydown", {
+          key: char, code, keyCode: charCode, which: charCode,
+          shiftKey: isShiftChar, bubbles: true, cancelable: true
+        }));
+        targetElement.dispatchEvent(new KeyboardEvent("keyup", {
+          key: char, code, keyCode: charCode, which: charCode,
+          shiftKey: isShiftChar, bubbles: true, cancelable: true
+        }));
+        if (isShiftChar) {
+          targetElement.dispatchEvent(new KeyboardEvent("keyup", {
+            key: "Shift", code: "ShiftLeft", keyCode: 16, which: 16,
+            bubbles: true, cancelable: true
+          }));
+        }
+      } else if (isGoogleDocs) {
         const isShiftChar = '!@#$%^&*()_+{}|:"<>?~'.includes(char);
         const code = getKeyCode(char);
         const charCode = char.charCodeAt(0);
@@ -440,7 +536,7 @@
         
         // Random error chance for each character (varies between provided errorRate ± 50%)
         const randomizedErrorRate = errorRate * (0.5 + Math.random());
-        shouldError = Math.random() < randomizedErrorRate && char !== " " && char !== "\n" && char !== "\r";
+        shouldError = !canvasMode && Math.random() < randomizedErrorRate && char !== " " && char !== "\n" && char !== "\r";
         extraDelay = shouldError ? await typeWithError(char) : await typeChar(char);
       } else {
         // Fast mode: speed-dependent delay, no errors or randomness
@@ -507,7 +603,8 @@
           message.speed,
           message.errorRate,
           message.position || 0,
-          message.humanMode !== false
+          message.humanMode !== false,
+          message.canvasMode === true
         );
         sendResponse({ status: "started" });
       } catch (err) {
