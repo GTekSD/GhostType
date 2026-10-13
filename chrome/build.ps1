@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$outputPath = Join-Path (Split-Path $projectRoot -Parent) 'GhostType-GTekSD-v2.69-Chrome-Web-Store.zip'
+$outputPath = Join-Path (Split-Path $projectRoot -Parent) 'GhostType-GTekSD-v3.69-Chrome-Web-Store.zip'
 $stagingPath = Join-Path $env:TEMP ('GhostType-Chrome-' + [guid]::NewGuid().ToString('N'))
 
 New-Item -ItemType Directory -Path $stagingPath | Out-Null
@@ -62,7 +62,7 @@ try {
     }
 
     if (
-      $manifest.version -ne '2.69' -or
+      $manifest.version -ne '3.69' -or
       $manifest.key -or
       -not $manifest.update_url -or
       -not $manifest.side_panel.default_path

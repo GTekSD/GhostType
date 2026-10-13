@@ -1,8 +1,8 @@
+# GhostType - GTekSD
+
 <p align="center">
   <img src="assets/ghosttype-logo.jpg" alt="GhostType logo">
 </p>
-
-# GhostType - GTekSD
 
 GhostType is a browser extension for automated text entry into supported web-page editors. Prepare multiple text snippets, choose a typing speed, and send a snippet to a focused field or, where supported, a canvas-based input that handles keyboard events.
 
@@ -14,6 +14,7 @@ Watch the [GhostType - GTekSD demonstration on YouTube](https://youtu.be/gBf22zK
 
 - [Install from the Chrome Web Store](https://chromewebstore.google.com/detail/ghosttype-gteksd/mkjcmmdggkpodgdoopjmhmmoidonkfej?hl=en)
 - [Install from Firefox Browser Add-ons](https://addons.mozilla.org/en-US/firefox/addon/ghosttype-gteksd/)
+- [Find GhostType in Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/search/GhostType%20GTekSD)
 
 ### Microsoft Edge
 
@@ -33,6 +34,14 @@ The Edge Add-ons package can also be built with `.\edge\build.ps1` in PowerShell
 3. Click the target field on the web page so it is ready to receive text.
 4. Adjust **Speed** if desired. **Human** mode optionally adds pauses and simulated corrections.
 5. Select **Start** on the snippet you want to type. Use **Stop** to end the current run. **Paste** reads clipboard text into that snippet when you select it; **Clear** empties only that snippet.
+
+### Organize and back up snippets
+
+- Edit a snippet's name using the name field above its controls. Use **↑** and **↓** to reorder snippets.
+- Use **Export JSON** to download a local backup. **Import JSON** accepts GhostType exports and legacy JSON arrays of text strings. Importing replaces the current list after confirmation when existing snippets contain text.
+- Imported and edited snippets remain local to the extension; the extension does not upload the file or snippet contents.
+
+The panel's compatibility indicator describes the focused field/editor class detected on the page. It is an estimate, not a guarantee: a website may ignore synthetic input, and Canvas Mode depends on the page's own keyboard handling.
 
 ### Canvas-based editors
 
@@ -62,8 +71,12 @@ The lab lets you toggle methods, interact with their test surfaces, and inspect 
 
 Browser extensions cannot produce trusted physical keystrokes from ordinary JavaScript. GhostType runs a content script on the active web page and routes typing commands from the panel through the extension background service worker.
 
-- For standard `<input>` and `<textarea>` fields, GhostType updates the field value and dispatches an `input` event so many page frameworks can observe the change.
+- If the current tab has no active content-script listener after an extension reload, GhostType injects the content script and retries the command once.
+- For supported `<input>` and `<textarea>` fields, GhostType uses the native value setter and dispatches an `input` event so framework-controlled fields can observe each change. Inputs without selectable text (such as email fields) receive appended text.
+- For CodeMirror editors, it spaces input events so the editor can consume characters from its hidden textarea, including in Fast mode. Monaco-based editors receive a minimum input interval in Fast mode.
 - For `contenteditable` areas, it uses browser editing commands to insert text.
+- For focused controls inside open shadow roots, it follows the active element; closed shadow roots are not accessible.
+- For rich-text editors inside same-origin iframes, it follows the focused frame to the editable element and runs editing commands in that frame's document.
 - For supported Google Docs input, it dispatches synthetic keyboard events to the editor's event target.
 - In Canvas Mode, it targets the last canvas clicked and dispatches synthetic `keydown`, `keypress`, and `keyup` events. The page's own handler must respond to those events and render the text.
 
@@ -83,13 +96,19 @@ Run these commands from the project directory in PowerShell:
 .\firefox\build.ps1
 ```
 
-The scripts create browser-specific ZIPs in the parent directory. Chrome and Edge use the Chromium extension files; the Edge package removes Chrome-specific manifest fields. Firefox uses its own manifest and background script.
+The scripts create browser-specific ZIPs in the parent directory. Chrome and Edge use the Chromium extension files; their upload packages remove Chrome-specific manifest fields, including the development `key`, so the Chrome package uses the identity assigned to the published Web Store item. Firefox uses its own manifest and background script.
 
 To load the Firefox build temporarily, extract the generated ZIP, open `about:debugging`, select **This Firefox** → **Load Temporary Add-on**, and choose the extracted `manifest.json`.
 
 ## Privacy and permissions
 
 GhostType stores its snippets and settings locally in the extension panel. Clipboard contents are read only when you select **Paste**. Typing commands are sent to the active tab where you choose to run them. See [PRIVACY.md](./PRIVACY.md) for details.
+
+## Support and feedback
+
+- [Report a bug or send feedback](https://github.com/GTekSD/GhostType/issues/new)
+- Email support: [gteksd.n00b@gmail.com](mailto:gteksd.n00b@gmail.com)
+- Project home: [GTekSD/GhostType](https://github.com/GTekSD/GhostType)
 
 ## Development
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GhostType - GTekSD",
-  "version": "2.69",
+  "version": "3.69",
   "description": "__MSG_shortDesc__",
   "default_locale": "en",
   "browser_specific_settings": {

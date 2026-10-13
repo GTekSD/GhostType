@@ -10,7 +10,7 @@ From PowerShell, run:
 .\firefox\build.ps1
 ```
 
-The script creates `GhostType-GTekSD-v2.69-Firefox.zip` next to the project directory. It packages the shared panel, content script, styles, locales, and icons with the Firefox manifest and background script.
+The script creates `GhostType-GTekSD-v3.69-Firefox.zip` next to the project directory. It packages the shared panel, content script, styles, locales, and icons with the Firefox manifest and background script.
 
 The Firefox manifest declares `required: ["none"]` for data collection because GhostType processes typing locally and does not transmit collected data.
 

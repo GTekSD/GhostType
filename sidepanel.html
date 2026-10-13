@@ -37,10 +37,27 @@
         <button type="button" id="addInputBtn" class="add-input-btn" title="Add another text field" aria-label="Add another text field">+</button>
       </div>
     </div>
+    <div class="snippet-library-toolbar">
+      <div class="snippet-library-actions">
+        <button type="button" id="importSnippetsBtn" class="library-btn">Import JSON</button>
+        <button type="button" id="exportSnippetsBtn" class="library-btn">Export JSON</button>
+        <input type="file" id="importSnippetsFile" accept=".json,application/json" hidden>
+      </div>
+      <div id="compatibilityStatus" class="compatibility-status" role="status" aria-live="polite" title="Website editors may ignore simulated input events.">
+        C: click a page field to check
+      </div>
+    </div>
     <div id="inputFields" class="input-fields"></div>
 
     <template id="inputCardTemplate">
       <section class="input-card">
+        <div class="snippet-heading-row">
+          <input class="snippet-name" type="text" maxlength="60" aria-label="Snippet name" placeholder="Snippet name">
+          <div class="snippet-order-actions">
+            <button type="button" class="snippet-order-btn" data-action="move-up" aria-label="Move snippet up" title="Move snippet up">↑</button>
+            <button type="button" class="snippet-order-btn" data-action="move-down" aria-label="Move snippet down" title="Move snippet down">↓</button>
+          </div>
+        </div>
         <div class="input-card-toolbar">
           <button type="button" class="primary-btn" data-action="start">▶ Start</button>
           <button type="button" class="secondary-btn stop-btn" data-action="stop" disabled>⏹ Stop</button>
@@ -57,8 +74,18 @@
       </section>
     </template>
 
-    <div class="developer-credit">Developed by Сухас Дхолз // GTekSD</div>
-
+    <footer class="panel-footer">
+      <div class="footer-links">
+        <a id="storeLink" href="#" target="_blank" rel="noreferrer">Get GhostType</a>
+        <a href="https://github.com/GTekSD/GhostType" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/GTekSD/GhostType/issues/new" target="_blank" rel="noreferrer">Report a bug / feedback</a>
+        <a href="mailto:gteksd.n00b@gmail.com">Support email</a>
+      </div>
+      <div class="footer-meta">
+        <span class="developer-credit">Developed by Сухас Дхолз // GTekSD</span>
+        <span id="versionLabel" class="version-label"></span>
+      </div>
+    </footer>
   </div>
 
   <script defer src="sidepanel.js"></script>

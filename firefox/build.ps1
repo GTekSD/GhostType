@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$outputPath = Join-Path (Split-Path $projectRoot -Parent) 'GhostType-GTekSD-v2.69-Firefox.zip'
+$outputPath = Join-Path (Split-Path $projectRoot -Parent) 'GhostType-GTekSD-v3.69-Firefox.zip'
 $stagingPath = Join-Path $env:TEMP ('GhostType-Firefox-' + [guid]::NewGuid().ToString('N'))
 
 New-Item -ItemType Directory -Path $stagingPath | Out-Null
@@ -57,7 +57,7 @@ try {
     }
 
     if (
-      $manifest.version -ne '2.69' -or
+      $manifest.version -ne '3.69' -or
       $manifest.side_panel -or
       $manifest.permissions -contains 'sidePanel' -or
       $manifest.browser_specific_settings.gecko.data_collection_permissions.required -notcontains 'none' -or

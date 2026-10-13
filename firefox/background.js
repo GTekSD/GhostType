@@ -50,6 +50,31 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
   }, 500);
 });
 
+async function sendMessageToTabWithInjection(tabId, message) {
+  try {
+    return await browser.tabs.sendMessage(tabId, message);
+  } catch (error) {
+    if (!error.message.includes('Receiving end does not exist')) {
+      throw error;
+    }
+  }
+
+  try {
+    await browser.scripting.executeScript({
+      target: { tabId },
+      files: ['content.js']
+    });
+  } catch (error) {
+    throw new Error(`Could not load GhostType on this page. Reload the page and try again. ${error.message}`);
+  }
+
+  try {
+    return await browser.tabs.sendMessage(tabId, message);
+  } catch (error) {
+    throw new Error(`GhostType could not connect to this page after loading its content script. ${error.message}`);
+  }
+}
+
 browser.runtime.onMessage.addListener(async (message) => {
   if (!['startTyping', 'pauseTyping', 'stopTyping'].includes(message.action)) {
     return undefined;
@@ -70,7 +95,7 @@ browser.runtime.onMessage.addListener(async (message) => {
     : { action: message.action };
 
   try {
-    const response = await browser.tabs.sendMessage(tab.id, payload);
+    const response = await sendMessageToTabWithInjection(tab.id, payload);
     return response || { status: message.action === 'startTyping' ? 'sent' : 'done' };
   } catch (error) {
     return { status: 'error', error: error.message };

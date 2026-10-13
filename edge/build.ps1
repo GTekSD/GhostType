@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$outputPath = Join-Path (Split-Path $projectRoot -Parent) 'GhostType-GTekSD-v2.69-Edge-Add-ons.zip'
+$outputPath = Join-Path (Split-Path $projectRoot -Parent) 'GhostType-GTekSD-v3.69-Edge-Add-ons.zip'
 $stagingPath = Join-Path $env:TEMP ('GhostType-Edge-' + [guid]::NewGuid().ToString('N'))
 
 New-Item -ItemType Directory -Path $stagingPath | Out-Null
@@ -72,7 +72,7 @@ try {
     }
 
     if (
-      $packagedManifest.version -ne '2.69' -or
+      $packagedManifest.version -ne '3.69' -or
       $packagedManifest.key -or
       $packagedManifest.update_url -or
       -not $packagedManifest.side_panel.default_path -or

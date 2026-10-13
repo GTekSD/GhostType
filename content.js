@@ -13,6 +13,52 @@
       target?.tagName === 'CANVAS'
     );
     lastClickedCanvas = clickedCanvas || null;
+    if (clickedCanvas) updateCompatibilityStatus(clickedCanvas);
+  }, true);
+
+  function updateCompatibilityStatus(target) {
+    let text = "Compatibility: no text editor focused";
+    let level = "unavailable";
+    let details = "Click an input, textarea, rich-text area, or supported editor on the page.";
+    if (target?.tagName === "CANVAS") {
+      text = "Compatibility: canvas is page-dependent";
+      level = "limited";
+      details = "Canvas input only works when the page handles synthetic keyboard events.";
+    } else if (target?.matches?.("textarea") && target.closest(".monaco-editor")) {
+      text = "Compatibility: Monaco editor detected";
+      level = "supported";
+      details = "Monaco support tested; the editor or website may still ignore synthetic input.";
+    } else if (target?.matches?.("textarea") && target.closest(".CodeMirror")) {
+      text = "Compatibility: CodeMirror editor detected";
+      level = "supported";
+      details = "CodeMirror support tested; the editor or website may still ignore synthetic input.";
+    } else if (target?.isContentEditable) {
+      text = "Compatibility: rich-text editor detected";
+      level = "supported";
+      details = "Rich-text support works with standard editable areas; custom editor behavior may vary.";
+    } else if (isEditableElement(target)) {
+      text = "Compatibility: text field detected";
+      level = "supported";
+      details = "Standard field support detected; the website may still reject simulated input.";
+    }
+
+    try {
+      chrome.runtime.sendMessage({ action: "compatibilityStatus", text, level, details }, () => {
+        if (chrome.runtime.lastError && !chrome.runtime.lastError.message.includes("Receiving end does not exist")) {
+          console.debug("Could not update compatibility status:", chrome.runtime.lastError.message);
+        }
+      });
+    } catch (error) {
+      console.debug("Could not update compatibility status:", error);
+    }
+  }
+
+  document.addEventListener("focusin", (event) => {
+    let target = event.target;
+    if (target?.tagName === "IFRAME") {
+      target = getFocusedEditableElement(document) || target;
+    }
+    updateCompatibilityStatus(target);
   }, true);
   
   // Helper functions from original
@@ -52,6 +98,69 @@
   let currentPosition = 0;
   let currentText = "";
   let typingTimeout = null;
+  const isEditableElement = (element) =>
+    element &&
+    (
+      element.tagName === "TEXTAREA" ||
+      (element.tagName === "INPUT" &&
+        ["text", "search", "url", "tel", "password", "email", "number"].includes(element.type)) ||
+      element.isContentEditable
+    );
+  const getFocusedEditableElement = (doc) => {
+    const activeElement = doc.activeElement;
+    if (activeElement?.tagName === "IFRAME") {
+      try {
+        const frameDocument = activeElement.contentDocument;
+        if (frameDocument) {
+          const frameTarget = getFocusedEditableElement(frameDocument);
+          if (frameTarget) return frameTarget;
+        }
+      } catch (error) {
+        console.debug("Focused editor frame is not accessible:", error);
+      }
+    }
+    if (activeElement?.shadowRoot?.activeElement) {
+      const shadowTarget = getFocusedEditableElement(activeElement.shadowRoot);
+      if (shadowTarget) return shadowTarget;
+    }
+    return isEditableElement(activeElement) ? activeElement : null;
+  };
+  const setInputValue = (element, value) => {
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(element),
+      "value"
+    )?.set;
+    if (!valueSetter) {
+      throw new Error("Could not update the focused input field.");
+    }
+    valueSetter.call(element, value);
+    element.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const insertIntoInput = (element, text) => {
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    if (typeof start !== "number" || typeof end !== "number") {
+      setInputValue(element, element.value + text);
+      return;
+    }
+    setInputValue(element, element.value.slice(0, start) + text + element.value.slice(end));
+    element.setSelectionRange(start + text.length, start + text.length);
+  };
+  const deleteFromInput = (element) => {
+    const start = element.selectionStart;
+    const end = element.selectionEnd;
+    if (typeof start !== "number" || typeof end !== "number") {
+      if (element.value.length > 0) setInputValue(element, element.value.slice(0, -1));
+      return;
+    }
+    if (start === 0 && start === end) return;
+    const nextPosition = start === end ? start - 1 : start;
+    const nextValue = start === end
+      ? element.value.slice(0, nextPosition) + element.value.slice(end)
+      : element.value.slice(0, start) + element.value.slice(end);
+    setInputValue(element, nextValue);
+    element.setSelectionRange(nextPosition, nextPosition);
+  };
   // Main typing function with ORIGINAL logic
   function startTyping(text, speed = 60, errorRate = 0.05, startPosition = 0, humanMode = true, canvasMode = false) {
     // Detect Google Docs
@@ -81,13 +190,18 @@
         throw new Error(errorMsg);
       }
     } else {
-      targetElement = document.activeElement;
-      if (!targetElement || (!["INPUT", "TEXTAREA"].includes(targetElement.tagName) && !targetElement.isContentEditable)) {
+      targetElement = getFocusedEditableElement(document);
+      if (!targetElement) {
         const errorMsg = "No editable element focused. Please click on a text field first.";
         console.error(errorMsg);
         throw new Error(errorMsg);
       }
     }
+    const targetDocument = targetElement.ownerDocument;
+    const isPolledCodeEditor =
+      targetElement.tagName === "TEXTAREA" && Boolean(targetElement.closest(".CodeMirror"));
+    const isMonacoEditor =
+      targetElement.tagName === "TEXTAREA" && Boolean(targetElement.closest(".monaco-editor"));
 
     // Focus element
     try {
@@ -168,16 +282,11 @@
           bubbles: true, cancelable: true
         }));
       } else if (targetElement.isContentEditable) {
-        document.execCommand("insertHTML", false, "<br>");
+        targetDocument.execCommand("insertHTML", false, "<br>");
       } else if (targetElement.tagName === "TEXTAREA") {
-        const pos = targetElement.selectionStart;
-        const val = targetElement.value;
-        targetElement.value = val.substring(0, pos) + "\n" + val.substring(targetElement.selectionEnd);
-        targetElement.selectionStart = targetElement.selectionEnd = pos + 1;
-        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+        insertIntoInput(targetElement, "\n");
       } else if (targetElement.tagName === "INPUT") {
-        targetElement.value += "\n";
-        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+        insertIntoInput(targetElement, "\n");
       }
       return 100 + Math.random() * 150;
     };
@@ -214,15 +323,9 @@
             bubbles: true, cancelable: true
           }));
         } else if (targetElement.isContentEditable) {
-          document.execCommand("delete", false);
+          targetDocument.execCommand("delete", false);
         } else if (["TEXTAREA", "INPUT"].includes(targetElement.tagName)) {
-          const pos = targetElement.selectionStart;
-          if (pos > 0) {
-            const val = targetElement.value;
-            targetElement.value = val.substring(0, pos - 1) + val.substring(targetElement.selectionEnd);
-            targetElement.selectionStart = targetElement.selectionEnd = pos - 1;
-            targetElement.dispatchEvent(new Event('input', { bubbles: true }));
-          }
+          deleteFromInput(targetElement);
         }
         return 50;
       }
@@ -328,13 +431,9 @@
           }));
         }
       } else if (targetElement.isContentEditable) {
-        document.execCommand("insertText", false, char);
+        targetDocument.execCommand("insertText", false, char);
       } else if (["TEXTAREA", "INPUT"].includes(targetElement.tagName)) {
-        const pos = targetElement.selectionStart;
-        const val = targetElement.value;
-        targetElement.value = val.substring(0, pos) + char + val.substring(targetElement.selectionEnd);
-        targetElement.selectionStart = targetElement.selectionEnd = pos + 1;
-        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+        insertIntoInput(targetElement, char);
       }
 
       // Extra delay for punctuation
@@ -357,13 +456,9 @@
           await new Promise(r => setTimeout(r, 5));
           targetElement.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
         } else if (targetElement.isContentEditable) {
-          document.execCommand("insertHTML", false, "<br>");
+          targetDocument.execCommand("insertHTML", false, "<br>");
         } else if (targetElement.tagName === "TEXTAREA") {
-          const pos = targetElement.selectionStart;
-          const val = targetElement.value;
-          targetElement.value = val.substring(0, pos) + "\n" + val.substring(targetElement.selectionEnd);
-          targetElement.selectionStart = targetElement.selectionEnd = pos + 1;
-          targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+          insertIntoInput(targetElement, "\n");
         }
         return 0;
       }
@@ -463,13 +558,9 @@
           }));
         }
       } else if (targetElement.isContentEditable) {
-        document.execCommand("insertText", false, char);
+        targetDocument.execCommand("insertText", false, char);
       } else if (["TEXTAREA", "INPUT"].includes(targetElement.tagName)) {
-        const pos = targetElement.selectionStart;
-        const val = targetElement.value;
-        targetElement.value = val.substring(0, pos) + char + val.substring(targetElement.selectionEnd);
-        targetElement.selectionStart = targetElement.selectionEnd = pos + 1;
-        targetElement.dispatchEvent(new Event('input', { bubbles: true }));
+        insertIntoInput(targetElement, char);
       }
       return 0;
     };
@@ -544,6 +635,10 @@
         delay = Math.max(5, baseDelay / 8); // Much faster but still adjustable
         await typeCharFast(char);
       }
+
+      // CodeMirror polls its hidden textarea, so allow each input event to be consumed.
+      if (isPolledCodeEditor) delay = Math.max(delay, 120);
+      if (isMonacoEditor) delay = Math.max(delay, 80);
 
       currentPosition++;
 

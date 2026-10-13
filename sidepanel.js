@@ -48,8 +48,29 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
   setupEventListeners();
   applyTheme();
+  setupFooterLinks();
   ensureContentScriptLoaded();
 });
+
+function setupFooterLinks() {
+  const storeLink = document.getElementById('storeLink');
+  const versionLabel = document.getElementById('versionLabel');
+  const userAgent = navigator.userAgent;
+  let storeUrl = 'https://chromewebstore.google.com/detail/ghosttype-gteksd/mkjcmmdggkpodgdoopjmhmmoidonkfej?hl=en';
+  let browserName = 'Chrome Web Store';
+
+  if (userAgent.includes('Firefox/')) {
+    storeUrl = 'https://addons.mozilla.org/en-US/firefox/addon/ghosttype-gteksd/';
+    browserName = 'Firefox Add-ons';
+  } else if (userAgent.includes('Edg/')) {
+    storeUrl = 'https://microsoftedge.microsoft.com/addons/search/GhostType%20GTekSD';
+    browserName = 'Edge Add-ons';
+  }
+
+  storeLink.href = storeUrl;
+  storeLink.textContent = `Get it on ${browserName}`;
+  versionLabel.textContent = `Version ${chrome.runtime.getManifest().version}`;
+}
 
 // Ensure content script is loaded on current tab
 async function ensureContentScriptLoaded() {
@@ -108,10 +129,23 @@ function loadTextInputs() {
     try {
       const saved = JSON.parse(localStorage.getItem(TEXT_SLOTS_KEY) || 'null');
       if (Array.isArray(saved)) {
-        savedSlots = saved.filter((value) => typeof value === 'string');
+        savedSlots = saved.flatMap((value, index) => {
+          if (typeof value === 'string') {
+            return [{ name: `Snippet ${index + 1}`, text: value }];
+          }
+          if (
+            value &&
+            typeof value === 'object' &&
+            typeof value.text === 'string' &&
+            (typeof value.name === 'string' || value.name === undefined)
+          ) {
+            return [{ name: value.name?.trim() || `Snippet ${index + 1}`, text: value.text }];
+          }
+          return [];
+        });
       } else {
         const legacyText = localStorage.getItem('naturalTypistText');
-        if (legacyText) savedSlots = [legacyText];
+        if (legacyText) savedSlots = [{ name: 'Snippet 1', text: legacyText }];
       }
     } catch (error) {
       console.error('Failed to load saved text fields:', error);
@@ -123,17 +157,18 @@ function loadTextInputs() {
   for (let index = 0; index < fieldCount; index++) {
     const id = nextInputId++;
     textSlots.push(id);
-    addInputCard(id, savedSlots[index] || '');
+    addInputCard(id, savedSlots[index]?.text || '', savedSlots[index]?.name || `Snippet ${index + 1}`);
   }
   updateInputFieldActions();
 }
 
-function addInputCard(id, text = '') {
+function addInputCard(id, text = '', name = `Snippet ${textSlots.length}`) {
   const template = document.getElementById('inputCardTemplate');
   const fragment = template.content.cloneNode(true);
   const card = fragment.querySelector('.input-card');
   const input = card.querySelector('.typing-input');
   card.dataset.inputId = String(id);
+  card.querySelector('.snippet-name').value = name;
   input.value = text;
   card.querySelector('.character-count').textContent = `${text.length} chars`;
   document.getElementById('inputFields').appendChild(fragment);
@@ -141,7 +176,10 @@ function addInputCard(id, text = '') {
 
 function saveTextInputs() {
   if (!settings.rememberText) return;
-  const values = [...document.querySelectorAll('.input-card .typing-input')].map((input) => input.value);
+  const values = [...document.querySelectorAll('.input-card')].map((card) => ({
+    name: card.querySelector('.snippet-name').value.trim() || `Snippet ${textSlots.indexOf(Number(card.dataset.inputId)) + 1}`,
+    text: card.querySelector('.typing-input').value
+  }));
   localStorage.setItem(TEXT_SLOTS_KEY, JSON.stringify(values));
 }
 
@@ -151,6 +189,107 @@ function updateInputFieldActions() {
   removeButton.disabled = isTyping || inputCount <= MIN_INPUT_COUNT;
   const hasText = [...document.querySelectorAll('#inputFields .typing-input')].some((input) => input.value.length > 0);
   document.getElementById('clearAllTextsBtn').disabled = isTyping || !hasText;
+  document.querySelectorAll('#inputFields .input-card').forEach((card, index, cards) => {
+    card.querySelector('[data-action="move-up"]').disabled = isTyping || index === 0;
+    card.querySelector('[data-action="move-down"]').disabled = isTyping || index === cards.length - 1;
+  });
+}
+
+function moveSnippet(card, direction) {
+  if (isTyping) return;
+  const cards = [...document.querySelectorAll('#inputFields .input-card')];
+  const index = cards.indexOf(card);
+  const target = cards[index + direction];
+  if (!target) return;
+
+  if (direction < 0) {
+    card.parentElement.insertBefore(card, target);
+  } else {
+    card.parentElement.insertBefore(target, card);
+  }
+  textSlots = [...document.querySelectorAll('#inputFields .input-card')]
+    .map((item) => Number(item.dataset.inputId));
+  saveTextInputs();
+  updateInputFieldActions();
+}
+
+function exportSnippets() {
+  const snippets = [...document.querySelectorAll('#inputFields .input-card')].map((card, index) => ({
+    name: card.querySelector('.snippet-name').value.trim() || `Snippet ${index + 1}`,
+    text: card.querySelector('.typing-input').value
+  }));
+  const content = JSON.stringify({ format: 'ghosttype-snippets', version: 1, snippets }, null, 2);
+  const url = URL.createObjectURL(new Blob([content], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `ghosttype-snippets-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast(`Exported ${snippets.length} snippets`, 'success');
+}
+
+async function importSnippets(file) {
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    let imported;
+    if (
+      parsed &&
+      parsed.format === 'ghosttype-snippets' &&
+      parsed.version === 1 &&
+      Array.isArray(parsed.snippets) &&
+      parsed.snippets.every((snippet) =>
+        snippet &&
+        typeof snippet.name === 'string' &&
+        typeof snippet.text === 'string'
+      )
+    ) {
+      imported = parsed.snippets.map((snippet, index) => ({
+        name: snippet.name.trim().slice(0, 60) || `Snippet ${index + 1}`,
+        text: snippet.text
+      }));
+    } else if (Array.isArray(parsed) && parsed.every((text) => typeof text === 'string')) {
+      imported = parsed.map((text, index) => ({ name: `Snippet ${index + 1}`, text }));
+    } else {
+      throw new Error('This is not a supported GhostType snippets file.');
+    }
+
+    if (!imported.length) {
+      throw new Error('The import file does not contain any snippets.');
+    }
+    if (isTyping) {
+      throw new Error('Stop typing before importing snippets.');
+    }
+
+    const existingCards = [...document.querySelectorAll('#inputFields .input-card')];
+    const hasExistingData = existingCards.some((card, index) =>
+      card.querySelector('.typing-input').value.length > 0 ||
+      card.querySelector('.snippet-name').value.trim() !== `Snippet ${index + 1}`
+    );
+    if (hasExistingData && !window.confirm('Importing snippets replaces the current snippet list. Continue?')) {
+      return;
+    }
+
+    textSlots = [];
+    document.getElementById('inputFields').replaceChildren();
+    const slotsToRender = [...imported];
+    while (slotsToRender.length < MIN_INPUT_COUNT) {
+      slotsToRender.push({ name: `Snippet ${slotsToRender.length + 1}`, text: '' });
+    }
+    for (const snippet of slotsToRender) {
+      const id = nextInputId++;
+      textSlots.push(id);
+      addInputCard(id, snippet.text, snippet.name);
+    }
+    saveTextInputs();
+    updateInputFieldActions();
+    showToast(`Imported ${imported.length} snippets`, 'success');
+  } catch (error) {
+    console.error('Failed to import snippets:', error);
+    showToast(error.message || 'Failed to import snippets', 'error');
+  } finally {
+    document.getElementById('importSnippetsFile').value = '';
+  }
 }
 
 // Apply theme
@@ -173,10 +312,12 @@ function applyTheme() {
 // Setup event listeners
 function setupEventListeners() {
   document.getElementById('inputFields').addEventListener('input', (event) => {
-    if (!event.target.matches('.typing-input')) return;
-    event.target.closest('.input-card').querySelector('.character-count').textContent = `${event.target.value.length} chars`;
+    if (event.target.matches('.typing-input')) {
+      event.target.closest('.input-card').querySelector('.character-count').textContent = `${event.target.value.length} chars`;
+    } else if (!event.target.matches('.snippet-name')) {
+      return;
+    }
     saveTextInputs();
-    updateInputFieldActions();
   });
   document.getElementById('inputFields').addEventListener('click', (event) => {
     const button = event.target.closest('[data-action]');
@@ -188,6 +329,8 @@ function setupEventListeners() {
     if (button.dataset.action === 'clear') clearText(card);
     if (button.dataset.action === 'start') startTyping(inputId);
     if (button.dataset.action === 'stop') stopTyping(inputId);
+    if (button.dataset.action === 'move-up') moveSnippet(card, -1);
+    if (button.dataset.action === 'move-down') moveSnippet(card, 1);
   });
   document.getElementById('removeInputBtn').addEventListener('click', () => {
     if (isTyping || textSlots.length <= MIN_INPUT_COUNT) return;
@@ -204,6 +347,13 @@ function setupEventListeners() {
     updateInputFieldActions();
   });
   document.getElementById('clearAllTextsBtn').addEventListener('click', clearAllTextInputs);
+  document.getElementById('exportSnippetsBtn').addEventListener('click', exportSnippets);
+  document.getElementById('importSnippetsBtn').addEventListener('click', () => {
+    document.getElementById('importSnippetsFile').click();
+  });
+  document.getElementById('importSnippetsFile').addEventListener('change', (event) => {
+    void importSnippets(event.target.files[0]);
+  });
 
   // Speed slider
   const speedSlider = document.getElementById('typingSpeed');
@@ -239,6 +389,14 @@ function setupEventListeners() {
         onTypingComplete(activeInputId);
         sendResponse({ status: 'done' });
         break;
+      case 'compatibilityStatus': {
+        const status = document.getElementById('compatibilityStatus');
+        status.textContent = message.text;
+        status.dataset.level = message.level;
+        status.title = message.details;
+        sendResponse({ status: 'done' });
+        break;
+      }
       case 'contextMenuStart':
         if (textSlots.length && !isTyping) {
           startTyping(textSlots[0]);
